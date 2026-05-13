@@ -561,6 +561,13 @@ def cmd_connect(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def cmd_serve(args: argparse.Namespace) -> None:
+    from .web import serve
+    console.print(f"[bold cyan]Starting web dashboard[/bold cyan] → [link]http://127.0.0.1:{args.port}[/link]")
+    console.print("[dim]Press Ctrl+C to stop.[/dim]")
+    serve(port=args.port, open_browser=not args.no_browser)
+
+
 def cmd_sync(args: argparse.Namespace) -> None:
     from .brokerage import fetch_holdings
     try:
@@ -911,6 +918,12 @@ examples:
     p.add_argument("--merge", action="store_true",
                    help="Merge with existing holdings instead of replacing")
     p.set_defaults(func=cmd_sync)
+
+    # serve
+    p = sub.add_parser("serve", help="Launch the web dashboard in your browser")
+    p.add_argument("--port", type=int, default=5000, help="Port to listen on (default: 5000)")
+    p.add_argument("--no-browser", action="store_true", help="Don't open browser automatically")
+    p.set_defaults(func=cmd_serve)
 
     return parser
 

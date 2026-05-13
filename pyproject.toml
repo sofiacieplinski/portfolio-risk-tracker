@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "portfolio-risk-tracker"
-version = "0.2.0"
+version = "0.3.0"
 description = "Terminal dashboard for portfolio risk metrics — beta, Sharpe, VaR, drawdown, alpha & more. Multi-provider market data + Plaid brokerage sync."
 readme = "README.md"
 license = { text = "MIT" }
@@ -30,6 +30,8 @@ dependencies = [
     "numpy>=1.24.0",
     "requests>=2.28.0",
     "plaid-python>=20.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
 ]
 
 [project.scripts]

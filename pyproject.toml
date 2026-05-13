@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portfolio-risk-tracker"
+version = "0.2.0"
+description = "Terminal dashboard for portfolio risk metrics — beta, Sharpe, VaR, drawdown, alpha & more. Multi-provider market data + Plaid brokerage sync."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["finance", "portfolio", "risk", "terminal", "dashboard", "stocks"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "rich>=13.0.0",
+    "yfinance>=0.2.40",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "requests>=2.28.0",
+    "plaid-python>=20.0.0",
+]
+
+[project.scripts]
+portfolio-tracker = "portfolio_tracker.tracker:main"
+
+[project.urls]
+"Homepage"    = "https://github.com/sofiacieplinski/portfolio-risk-tracker"
+"Bug Tracker" = "https://github.com/sofiacieplinski/portfolio-risk-tracker/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["portfolio_tracker*"]

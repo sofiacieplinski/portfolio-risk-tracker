@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Local data & secrets
+holdings.json
+*.pdf
+*.html
+.pypirc
+
+# OS
+.DS_Store

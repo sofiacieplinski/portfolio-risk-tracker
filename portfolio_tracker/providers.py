@@ -16,15 +16,25 @@ Configure with:
 """
 from __future__ import annotations
 
+import threading
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
+from typing import Optional
 
 import pandas as pd
 import requests
 import yfinance as yf
 
 from .config import get_key
+
+# ─── In-memory cache (shared across threads, 5-min TTL) ──────────────────────
+_cache_lock    = threading.Lock()
+_cache: dict   = {}   # key → (df, provider, fetched_at)
+_CACHE_TTL     = 300  # seconds
+
+# ─── Global download lock (serialize yfinance calls to avoid SQLite contention)
+_download_lock = threading.Lock()
 
 PERIOD_DAYS = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825}
 
@@ -135,17 +145,18 @@ class YFinanceProvider(PriceProvider):
 
     def fetch(self, tickers: list[str], period: str) -> pd.DataFrame:
         unique = list(dict.fromkeys(tickers))
-        for attempt in range(2):
-            try:
+        with _download_lock:   # serialize all yfinance downloads
+            for attempt in range(3):
+                try:
+                    raw = yf.download(unique, period=period, auto_adjust=True, progress=False)
+                    break
+                except Exception as exc:
+                    if attempt < 2 and "database is locked" in str(exc).lower():
+                        time.sleep(2)
+                        continue
+                    raise
+            else:
                 raw = yf.download(unique, period=period, auto_adjust=True, progress=False)
-                break
-            except Exception as exc:
-                if attempt == 0 and "database is locked" in str(exc).lower():
-                    time.sleep(2)
-                    continue
-                raise
-        else:
-            raw = yf.download(unique, period=period, auto_adjust=True, progress=False)
 
         if len(unique) == 1:
             prices = raw[["Close"]].rename(columns={"Close": unique[0]})
@@ -172,20 +183,41 @@ def get_prices(tickers: list[str], period: str = "1y") -> tuple[pd.DataFrame, st
     Fetch adjusted close prices using the best available provider.
     Returns (DataFrame, provider_name_used).
     Raises RuntimeError if all providers fail.
+
+    Results are cached for _CACHE_TTL seconds so concurrent requests
+    (e.g. /api/data + /api/sectors firing simultaneously) share data
+    and avoid SQLite contention in the yfinance cache layer.
     """
+    cache_key = (tuple(sorted(tickers)), period)
+    now = time.time()
+
+    with _cache_lock:
+        if cache_key in _cache:
+            df, pname, fetched_at = _cache[cache_key]
+            if now - fetched_at < _CACHE_TTL:
+                return df, pname
+
     errors: list[str] = []
 
-    for provider in _PROVIDERS:
-        # Skip paid providers if no key is set
-        if provider.name in ("polygon", "finnhub") and not get_key(provider.name):
-            continue
-        try:
-            df = provider.fetch(list(tickers), period)
-            if provider._validate(df, list(tickers)):
-                return df, provider.name
-            errors.append(f"{provider.name}: incomplete data")
-        except Exception as exc:
-            errors.append(f"{provider.name}: {exc}")
+    for attempt in range(2):           # retry once on incomplete data
+        for provider in _PROVIDERS:
+            # Skip paid providers if no key is set
+            if provider.name in ("polygon", "finnhub") and not get_key(provider.name):
+                continue
+            try:
+                df = provider.fetch(list(tickers), period)
+                if provider._validate(df, list(tickers)):
+                    with _cache_lock:
+                        _cache[cache_key] = (df, provider.name, time.time())
+                    return df, provider.name
+                errors.append(f"{provider.name}: incomplete data")
+            except Exception as exc:
+                errors.append(f"{provider.name}: {exc}")
+
+        # First attempt got incomplete data — wait briefly and retry
+        if attempt == 0:
+            time.sleep(2)
+            errors.clear()
 
     raise RuntimeError(
         "All market data providers failed:\n" + "\n".join(f"  • {e}" for e in errors)

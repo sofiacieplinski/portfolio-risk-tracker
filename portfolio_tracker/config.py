@@ -5,9 +5,10 @@ Stored in ~/.portfolio_tracker/config.json
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
-DATA_DIR    = Path.home() / ".portfolio_tracker"
+DATA_DIR    = Path(os.environ.get("PT_DATA_DIR", Path.home() / ".portfolio_tracker"))
 CONFIG_FILE = DATA_DIR / "config.json"
 
 PROVIDERS = ("polygon", "finnhub")

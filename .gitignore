@@ -16,5 +16,8 @@ holdings.json
 *.html
 .pypirc
 
+# Claude Code local settings (may contain tokens)
+.claude/
+
 # OS
 .DS_Store

@@ -104,6 +104,17 @@ def _load() -> dict:
     if HOLDINGS_FILE.exists():
         with open(HOLDINGS_FILE) as f:
             return json.load(f)
+    # Seed from environment variable if file doesn't exist (cloud deployments)
+    seed = _os.environ.get("PT_HOLDINGS_SEED")
+    if seed:
+        try:
+            data = json.loads(seed)
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            with open(HOLDINGS_FILE, "w") as f:
+                json.dump(data, f, indent=2)
+            return data
+        except Exception:
+            pass
     return {"holdings": [], "benchmark": "SPY", "risk_free_rate": 0.05}
 
 def _load_watchlist() -> list:
